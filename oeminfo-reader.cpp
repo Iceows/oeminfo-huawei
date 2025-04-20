@@ -14,14 +14,14 @@
 
 
 #include <iostream>
-#include <fstream>
-#include <unordered_map>
-#include <vector>
+#include <sstream>
 #include <string>
+#include <fstream>
+#include <map>
+#include <vector>
 #include <filesystem>
 #include <cstring>
 #include <cstdlib>
-#include <map>
 #include <algorithm>
 
 char* optarg = NULL;
@@ -109,19 +109,40 @@ std::map<int, std::map<int, std::string>> elements = {
 };
 
 
-void unpackOEM(std::ifstream& f) {
+struct ProductInfo {
+    // From oeminfo
+    std::string device;
+    std::string infostr="";
+    std::string region;
+    std::string model;
+    std::string marketname;
+
+    // result of the parse
+
+    std::string version;
+    std::string baseband;
+
+    // TODO
+    std::string brand;
+
+};
+
+ProductInfo unpackOEM(std::ifstream& input) {
     std::vector<char> HW_Version(8);
     std::vector<char> HW_Region(6);
     std::vector<char> SW_Version(128);
+    std::vector<char> MarketingName(19);
+    std::vector<char> Model(128);
+    ProductInfo product_info = {};
 
 
-    std::vector<char> binary((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    std::vector<char> binary((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
     size_t content_length = binary.size();
     size_t content_startbyte = 0;
 
     if (content_length != 67108864) {
-        std::cout << "Wrong filesize" << std::endl;
-        return;
+        std::cout << "Wrong filesize";
+        return product_info;
     }
 
     while (content_startbyte < content_length) {
@@ -140,14 +161,16 @@ void unpackOEM(std::ifstream& f) {
                 version = version_number;
             }
             if (version != version_number) {
-                std::cout << "version number changed during parsing! wtf" << std::endl;
-                return;
+                std::cout << "version number changed during parsing! wtf";
+                return product_info;
             }
             if (version_number == 8) {
                 // Handle version 8 specific logic
+                std::cout << "oeminfo version 8:";
             }
             if (version_number == 6) {
                 // Handle version 6 specific logic
+                std::cout << "oeminfo version 6:";
             }
             if (id == 0x61) {
                 std::memcpy(HW_Version.data(), binary.data() + content_startbyte + 0x200, data_len);
@@ -158,23 +181,63 @@ void unpackOEM(std::ifstream& f) {
             if (id == 0x4e) {
                 std::memcpy(SW_Version.data(), binary.data() + content_startbyte + 0x200, data_len);
             }
-
+            if (id == 0x81) {
+                std::memcpy(MarketingName.data(), binary.data() + content_startbyte + 0x200, data_len);
+            }
+            if (id == 0x5b) {
+                std::memcpy(Model.data(), binary.data() + content_startbyte + 0x200, data_len);
+            }
             std::string fileout = std::to_string(id) + "-" + std::to_string(type) + "-" + std::to_string(age) + "-" + std::to_string(content_startbyte);
             std::cout << "hdr:" << std::string(header, 8) << " age:" << std::hex << age << " id:" << std::hex << id << " " << elements[version][id] << std::endl;
-
-
         }
         content_startbyte += 0x400; // Move to the next header
     }
 
-    std::string outdir = std::string(HW_Version.begin(), HW_Version.end()) + "#" + 
-        std::string(HW_Region.begin(), HW_Region.end()) + "#" +
-        std::string(SW_Version.begin(), SW_Version.end());
-    std::cout << outdir;
+    std::string versionfull = std::string(SW_Version.begin(), SW_Version.end());
+
+    product_info.infostr = versionfull.substr(0, versionfull.find('\0'));
+    product_info.region = std::string(HW_Region.begin(), HW_Region.end());
+    product_info.device = std::string(HW_Version.begin(), HW_Version.end());
+    product_info.model = std::string(Model.begin(), Model.end());
+    product_info.marketname = std::string(MarketingName.begin(), MarketingName.end());
+
+    // Input string
+    std::string a("1 2 3");
+    // Object class of istringstream
+    std::istringstream my_stream(a);
+
+    std::istringstream iss(product_info.infostr);
+
+    // Extract the version (i.e. "9.1.0.311").
+    std::getline(iss, product_info.version, '(');
+
+    // Remove trailing whitespace.
+    if (!product_info.version.empty() && product_info.version.back() == ')') {
+        product_info.version.pop_back();
+    }
+
+    // Extract the baseband (i.e. "C185E3R2P1").
+    std::getline(iss, product_info.baseband, ')');
+
+    // Extract the brand
+    product_info.brand = "HUAWEI";
+
+    std::cout << " **** OEMINFO **** " << std::endl;
+    std::cout << "  Info String (Rom Version) = " << product_info.infostr << std::endl;
+    std::cout << "  Device = " << product_info.device << std::endl;
+    std::cout << "  Region = " << product_info.region << std::endl;
+    std::cout << "  Model = " << product_info.model << std::endl;
+    std::cout << "  MarketingName = " << product_info.marketname << std::endl;
+    std::cout << " **** Extract **** " << std::endl;
+
+    std::cout << "  Version = " << product_info.version << std::endl;
+    std::cout << "  BaseBand = " << product_info.baseband << std::endl;
+
+    return product_info;
 }
 
 void help(const std::string& script) {
-    std::cout << script << " -a <action> -i <inputfile> -r <replace_inputfile>  -t <type 0x00>" << std::endl;
+    std::cout << script << " -a extract -i <inputfile> -r <replace_inputfile>  -t <type 0x00>" << std::endl;
     std::exit(0);
 }
 
@@ -211,7 +274,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (action == "extract") {
-        unpackOEM(input);
+        ProductInfo product_info = unpackOEM(input);
     }
     else {
         std::cerr << "Unknown action: " << action << std::endl;
