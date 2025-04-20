@@ -84,6 +84,9 @@ std::map<int, std::map<int, std::string>> elements = {
         {0x96, "Unknown SHA256 3"},
         {0xa6, "Update Token"},
         {0xa9, "Some kind of json changelog"},
+        {0xb4, "cust version"},
+        {0xb6, "preload version"},
+        {0xba, "system version"},
         {0x15f, "Logo Boot"}, // Can be overridden in product, version, vendor or system partitions
         {0x160, "Logo Battery Empty"},
         {0x161, "Logo Battery Charge"},
@@ -193,19 +196,21 @@ ProductInfo unpackOEM(std::ifstream& input) {
         content_startbyte += 0x400; // Move to the next header
     }
 
-    std::string versionfull = std::string(SW_Version.begin(), SW_Version.end());
+    std::string temp;
+        
+    temp = std::string(SW_Version.begin(), SW_Version.end());
+    product_info.infostr = temp.substr(0, temp.find('\0'));
+    temp = std::string(HW_Region.begin(), HW_Region.end());
+    product_info.region = temp.substr(0, temp.find('\0'));
+    temp = std::string(HW_Version.begin(), HW_Version.end());
+    product_info.device = temp.substr(0, temp.find('\0'));
+    temp = std::string(Model.begin(), Model.end());
+    product_info.device = temp.substr(0, temp.find('\0'));
 
-    product_info.infostr = versionfull.substr(0, versionfull.find('\0'));
-    product_info.region = std::string(HW_Region.begin(), HW_Region.end());
-    product_info.device = std::string(HW_Version.begin(), HW_Version.end());
-    product_info.model = std::string(Model.begin(), Model.end());
-    product_info.marketname = std::string(MarketingName.begin(), MarketingName.end());
+    temp = std::string(MarketingName.begin(), MarketingName.end());
+    product_info.marketname = temp.substr(0, temp.find('\0'));
 
     // Input string
-    std::string a("1 2 3");
-    // Object class of istringstream
-    std::istringstream my_stream(a);
-
     std::istringstream iss(product_info.infostr);
 
     // Extract the version (i.e. "9.1.0.311").
