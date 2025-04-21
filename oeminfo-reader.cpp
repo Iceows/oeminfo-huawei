@@ -114,17 +114,16 @@ std::map<int, std::map<int, std::string>> elements = {
 
 struct ProductInfo {
     // From oeminfo
-    std::string devicehw;
+    std::string board;
     std::string infostr = "";
     std::string region;
     std::string model;
-    std::string marketname;
+    std::string marketname = "";
 
     // result of the parse
     std::string version;
     std::string baseband;
     std::string device;
-    std::string board;
 
     // TODO
     std::string brand;
@@ -196,23 +195,30 @@ ProductInfo unpackOEM(std::ifstream& input) {
         content_startbyte += 0x400; // Move to the next header
     }
 
+
+
     std::string temp;
 
     temp = std::string(SW_Version.begin(), SW_Version.end());
     product_info.infostr = temp.substr(0, temp.find('\0'));
     temp = std::string(HW_Region.begin(), HW_Region.end());
     product_info.region = temp.substr(0, temp.find('\0'));
+
+    // Extract the board (i.e. "POT-L21")
     temp = std::string(HW_Version.begin(), HW_Version.end());
-    product_info.devicehw = temp.substr(0, temp.find('\0'));
+    product_info.board = temp.substr(0, temp.find('\0'));
+
+    // Extract the model (POT-LX1)
     temp = std::string(Model.begin(), Model.end());
     product_info.model = temp.substr(0, temp.find('\0'));
 
     temp = std::string(MarketingName.begin(), MarketingName.end());
     product_info.marketname = temp.substr(0, temp.find('\0'));
 
-
+    // Extract the full description
+    std::string tempm;
     std::istringstream iss(product_info.infostr);
-    std::getline(iss, product_info.model, ' ');
+    std::getline(iss, tempm, ' ');
 
     // Extract the version (i.e. "9.1.0.311").
     std::getline(iss, product_info.version, '(');
@@ -222,24 +228,35 @@ ProductInfo unpackOEM(std::ifstream& input) {
         product_info.version.pop_back();
     }
 
-    // Extract the baseband (i.e. "C185E3R2P1")
+    // Extract the baseband (i.e. "C432E3R4P1")
     std::getline(iss, product_info.baseband, ')');
 
     // Extract the brand
     product_info.brand = "HUAWEI";
 
-    // Extract the board
-    product_info.board = product_info.devicehw;
 
-    // Extract the device (i.e. "HWPOT")
+    // Extract the device (i.e. "HWPOT-H")
     std::istringstream iss1(product_info.model);
     std::string tempmodel;
     std::getline(iss1, tempmodel, '-');
     product_info.device = "HW" + tempmodel + "-H";
 
+    /*
+**** OEMINFO ****
+  Info String (Rom Version) = POT-LX1 10.0.0.238(C432E3R4P1)
+  Board = POT-L21
+  Region = hw/eu
+  Model = POT-LX1
+  MarketingName = HUAWEI P smart 2019
+ **** Extract ****
+  Device = HWPOT-H
+  Version = 10.0.0.238
+  BaseBand = C432E3R4P1
+*/
+
     std::cout << " **** OEMINFO **** " << std::endl;
     std::cout << "  Info String (Rom Version) = " << product_info.infostr << std::endl;
-    std::cout << "  DeviceHW = " << product_info.devicehw << std::endl;
+    std::cout << "  Board = " << product_info.board << std::endl;
     std::cout << "  Region = " << product_info.region << std::endl;
     std::cout << "  Model = " << product_info.model << std::endl;
     std::cout << "  MarketingName = " << product_info.marketname << std::endl;
