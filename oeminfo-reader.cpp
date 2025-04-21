@@ -237,9 +237,6 @@ ProductInfo unpackOEM(std::ifstream& input) {
     std::getline(iss1, tempmodel, '-');
     product_info.device = "HW" + tempmodel + "-H";
 
-    // TODO    
-    product_info.marketname = "";
-
     std::cout << " **** OEMINFO **** " << std::endl;
     std::cout << "  Info String (Rom Version) = " << product_info.infostr << std::endl;
     std::cout << "  DeviceHW = " << product_info.devicehw << std::endl;
