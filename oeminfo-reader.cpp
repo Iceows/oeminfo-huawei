@@ -114,20 +114,20 @@ std::map<int, std::map<int, std::string>> elements = {
 
 struct ProductInfo {
     // From oeminfo
-    std::string device;
-    std::string infostr="";
+    std::string devicehw;
+    std::string infostr = "";
     std::string region;
     std::string model;
     std::string marketname;
 
     // result of the parse
-
     std::string version;
     std::string baseband;
+    std::string device;
+    std::string board;
 
     // TODO
     std::string brand;
-
 };
 
 ProductInfo unpackOEM(std::ifstream& input) {
@@ -197,21 +197,22 @@ ProductInfo unpackOEM(std::ifstream& input) {
     }
 
     std::string temp;
-        
+
     temp = std::string(SW_Version.begin(), SW_Version.end());
     product_info.infostr = temp.substr(0, temp.find('\0'));
     temp = std::string(HW_Region.begin(), HW_Region.end());
     product_info.region = temp.substr(0, temp.find('\0'));
     temp = std::string(HW_Version.begin(), HW_Version.end());
-    product_info.device = temp.substr(0, temp.find('\0'));
+    product_info.devicehw = temp.substr(0, temp.find('\0'));
     temp = std::string(Model.begin(), Model.end());
-    product_info.device = temp.substr(0, temp.find('\0'));
+    product_info.model = temp.substr(0, temp.find('\0'));
 
     temp = std::string(MarketingName.begin(), MarketingName.end());
     product_info.marketname = temp.substr(0, temp.find('\0'));
 
-    // Input string
+
     std::istringstream iss(product_info.infostr);
+    std::getline(iss, product_info.model, ' ');
 
     // Extract the version (i.e. "9.1.0.311").
     std::getline(iss, product_info.version, '(');
@@ -221,20 +222,33 @@ ProductInfo unpackOEM(std::ifstream& input) {
         product_info.version.pop_back();
     }
 
-    // Extract the baseband (i.e. "C185E3R2P1").
+    // Extract the baseband (i.e. "C185E3R2P1")
     std::getline(iss, product_info.baseband, ')');
 
     // Extract the brand
     product_info.brand = "HUAWEI";
 
+    // Extract the board
+    product_info.board = product_info.devicehw;
+
+    // Extract the device (i.e. "HWPOT")
+    std::istringstream iss1(product_info.model);
+    std::string tempmodel;
+    std::getline(iss1, tempmodel, '-');
+    product_info.device = "HW" + tempmodel + "-H";
+
+    // TODO    
+    product_info.marketname = "";
+
     std::cout << " **** OEMINFO **** " << std::endl;
     std::cout << "  Info String (Rom Version) = " << product_info.infostr << std::endl;
-    std::cout << "  Device = " << product_info.device << std::endl;
+    std::cout << "  DeviceHW = " << product_info.devicehw << std::endl;
     std::cout << "  Region = " << product_info.region << std::endl;
     std::cout << "  Model = " << product_info.model << std::endl;
     std::cout << "  MarketingName = " << product_info.marketname << std::endl;
-    std::cout << " **** Extract **** " << std::endl;
 
+    std::cout << " **** Extract **** " << std::endl;
+    std::cout << "  Device = " << product_info.device << std::endl;
     std::cout << "  Version = " << product_info.version << std::endl;
     std::cout << "  BaseBand = " << product_info.baseband << std::endl;
 
