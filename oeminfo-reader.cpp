@@ -131,9 +131,10 @@ struct ProductInfo {
 
 ProductInfo unpackOEM(std::ifstream& input) {
     std::vector<char> HW_Version(8);
-    std::vector<char> HW_Region(6);
+    std::vector<char> ROM_Version(32);
+    std::vector<char> HW_Region(16);
     std::vector<char> SW_Version(128);
-    std::vector<char> MarketingName(19);
+    std::vector<char> MarketingName(32);
     std::vector<char> Model(128);
     ProductInfo product_info = {};
 
@@ -180,8 +181,12 @@ ProductInfo unpackOEM(std::ifstream& input) {
             if (id == 0x12) {
                 std::memcpy(HW_Region.data(), binary.data() + content_startbyte + 0x200, data_len);
             }
+            // 0x4e or 0x61
             if (id == 0x4e) {
                 std::memcpy(SW_Version.data(), binary.data() + content_startbyte + 0x200, data_len);
+            }
+            if (id == 0x61) {
+                std::memcpy(ROM_Version.data(), binary.data() + content_startbyte + 0x200, data_len);
             }
             if (id == 0x81) {
                 std::memcpy(MarketingName.data(), binary.data() + content_startbyte + 0x200, data_len);
